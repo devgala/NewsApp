@@ -3,13 +3,13 @@ package com.example.newsapp;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 
 import android.annotation.SuppressLint;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
-import android.widget.ImageButton;
-import android.widget.ProgressBar;
+
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,10 +19,10 @@ import com.example.newsapp.apis.NewsAPI;
 import com.example.newsapp.models.Article;
 import com.example.newsapp.models.Category;
 import com.example.newsapp.models.newsModel;
-import com.google.gson.Gson;
+
 
 import java.util.ArrayList;
-import java.util.List;
+
 
 import retrofit2.Call;
 import retrofit2.Callback;
@@ -42,9 +42,11 @@ public class MainActivity extends AppCompatActivity implements  CategoryAdapter.
     private RecyclerView categoryRV;
     private CategoryAdapter categoryAdapter;
     private NewsRVAdapter newsRVAdapter;
-    private ProgressBar progressBar;
-    private ImageButton refreshButton;
-    TextView header;
+
+    private TextView header;
+    private SwipeRefreshLayout swipeRefreshLayout;
+
+
     @SuppressLint("NotifyDataSetChanged")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,9 +56,14 @@ public class MainActivity extends AppCompatActivity implements  CategoryAdapter.
         articleArrayList = new ArrayList<Article>();
         articleRV = findViewById(R.id.articleRV);
         categoryRV = findViewById(R.id.categoryRV);
-        progressBar = findViewById(R.id.progressbar);
-        refreshButton = findViewById(R.id.refresh);
+
         header = findViewById(R.id.header);
+        swipeRefreshLayout = findViewById(R.id.swipeRefresh);
+        /*when ever using many refresh use Differ.Util and
+         AsyncListDiffer to avoid this error:
+         RecyclerView and java.lang.IndexOutOfBoundsException: Inconsistency detected. Invalid view holder adapter positionViewHolder
+        */
+
         header.setText("News App");
         articleRV.setLayoutManager(new LinearLayoutManager(this));
         articleRV.setLayoutManager(new LinearLayoutManager(this));
@@ -68,13 +75,14 @@ public class MainActivity extends AppCompatActivity implements  CategoryAdapter.
         categoryAdapter.notifyDataSetChanged();
         getNews("All");
         newsRVAdapter.notifyDataSetChanged();
-        refreshButton.setOnClickListener(new View.OnClickListener() {
+
+        swipeRefreshLayout.setOnRefreshListener(new SwipeRefreshLayout.OnRefreshListener() {
             @Override
-            public void onClick(View view) {
+            public void onRefresh() {
                 getNews(cat);
+                swipeRefreshLayout.setRefreshing(false);
             }
         });
-
     }
     public void getCategories(){
         categoryList.add(new Category("All","https://images.unsplash.com/photo-1508612761958-e931d843bdd5?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=415&q=80"));
@@ -87,7 +95,9 @@ public class MainActivity extends AppCompatActivity implements  CategoryAdapter.
 
     }
     public void getNews(String category){
-        progressBar.setVisibility(View.VISIBLE);
+
+        articleRV.setVisibility(View.INVISIBLE);
+        swipeRefreshLayout.setRefreshing(true);
         articleArrayList.clear();
         cat = category;
         Retrofit retrofit = new Retrofit.Builder().baseUrl(BASE_URL).addConverterFactory(GsonConverterFactory.create()).build();
@@ -107,20 +117,24 @@ public class MainActivity extends AppCompatActivity implements  CategoryAdapter.
             @Override
             public void onResponse(Call<newsModel> call, Response<newsModel> response) {
                 newsModel nm = response.body();
-                progressBar.setVisibility(View.GONE);
+
+                swipeRefreshLayout.setRefreshing(false);
+                articleRV.setVisibility(View.VISIBLE);
                 ArrayList<Article> list = nm.getArticles();
                 for(Article a : list){
                     Article article = new Article(a.getTitle(),a.getDescription(),a.getUrl(),a.getUrlToImage(),a.getPublishedAt(),a.getContent(),a.getSource());
                     articleArrayList.add(article);
                 }
-                newsRVAdapter.notifyDataSetChanged();
+               // newsRVAdapter.notifyDataSetChanged();
+                newsRVAdapter.submitList(list);
+
             }
 
             @Override
             public void onFailure(Call<newsModel> call, Throwable t) {
 
                 Toast.makeText(MainActivity.this,"Failed to get News",Toast.LENGTH_SHORT).show();
-                progressBar.setVisibility(View.GONE);
+
                 if(!category.equalsIgnoreCase("all"))
                 getNews("All");
                 else Toast.makeText(MainActivity.this,"Please check internet or try again later",Toast.LENGTH_LONG).show();

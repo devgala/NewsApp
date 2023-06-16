@@ -5,6 +5,7 @@ package com.example.newsapp.adapters;
 import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,6 +14,8 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.AsyncListDiffer;
+import androidx.recyclerview.widget.DiffUtil;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.example.newsapp.ArticleActivity;
@@ -33,11 +36,29 @@ public class NewsRVAdapter extends RecyclerView.Adapter<NewsRVAdapter.ViewHolder
     public static final String ARTICLE_DATE = "com.example.newsapp.adapters.article_date";
     public static final String ARTICLE_URL = "com.example.newsapp.adapters.article_url";
 
+    public static final DiffUtil.ItemCallback<Article> DIFF_CALLBACK = new DiffUtil.ItemCallback<Article>() {
+        @Override
+        public boolean areItemsTheSame(@NonNull Article oldItem, @NonNull Article newItem) {
+            return oldItem.getTitle().equals(newItem.getTitle());
+        }
 
+        @SuppressLint("DiffUtilEquals")
+        @Override
+        public boolean areContentsTheSame(@NonNull Article oldItem, @NonNull Article newItem) {
+            return oldItem.equals(newItem);
+        }
+    };
+    private AsyncListDiffer<Article> asyncListDiffer; //= new AsyncListDiffer<Article>(this,DIFF_CALLBACK);
 
     public NewsRVAdapter(ArrayList<Article> articleArrayList, Context context) {
+        asyncListDiffer = new AsyncListDiffer<Article>(this,DIFF_CALLBACK);
         this.articleArrayList = articleArrayList;
         this.context = context;
+       submitList(articleArrayList);
+    }
+    public void submitList(ArrayList<Article> articleArrayList){
+        //Log.d("async","submitlist");
+        asyncListDiffer.submitList(articleArrayList);
     }
 
     @NonNull
@@ -51,7 +72,7 @@ public class NewsRVAdapter extends RecyclerView.Adapter<NewsRVAdapter.ViewHolder
     @SuppressLint("SetTextI18n")
     @Override
     public void onBindViewHolder(@NonNull NewsRVAdapter.ViewHolder holder, int position) {
-        Article article = articleArrayList.get(position);
+        Article article = asyncListDiffer.getCurrentList().get(position);
         holder.titletext.setText(article.getTitle());
         holder.sourceName.setText("Source: "+article.getSource().getName());
         if(!article.getUrlToImage().equalsIgnoreCase("no image"))
@@ -75,7 +96,7 @@ public class NewsRVAdapter extends RecyclerView.Adapter<NewsRVAdapter.ViewHolder
 
     @Override
     public int getItemCount() {
-        return articleArrayList.size();
+        return asyncListDiffer.getCurrentList().size();
     }
 
     public class ViewHolder extends RecyclerView.ViewHolder{

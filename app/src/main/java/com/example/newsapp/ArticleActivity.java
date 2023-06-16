@@ -46,7 +46,8 @@ public class ArticleActivity extends AppCompatActivity {
         button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                Intent urlIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                Intent urlIntent = new Intent(ArticleActivity.this,WebActivity.class);
+                urlIntent.putExtra(NewsRVAdapter.ARTICLE_URL,url);
                 startActivity(urlIntent);
             }
         });
